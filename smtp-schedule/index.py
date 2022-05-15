@@ -32,11 +32,14 @@ class ToSMTPForwarder(MailForwarder):
     def ready(self, *args, **kwargs):
         return self.READY
     def forward(self, mail, *args, **kwargs):
-        self.READY = time.time() + self.WAIT_TIME
+        try:
+            self.READY = time.time() + self.WAIT_TIME
 
-        with smtplib.SMTP_SSL(self.SMTP_SERVER, self.SMTP_SERVER_PORT) as smtp:
-            smtp.login(self.ADDRESS, self.PASSWORD)
-            smtp.sendmail(mail.mail_from, mail.rcpt_tos, mail.content)
+            with smtplib.SMTP_SSL(self.SMTP_SERVER, self.SMTP_SERVER_PORT) as smtp:
+                smtp.login(self.ADDRESS, self.PASSWORD)
+                smtp.sendmail(mail.mail_from, mail.rcpt_tos, mail.content)
+        except Exception:
+            pass
 
 mails = []
 mail_idx = 0
@@ -67,6 +70,7 @@ class MailThread(threading.Thread):
             if handler_found != None:
                 handler_found.forward(cur_mail)
                 mail_idx += 1
+                curses_cli.EXPOSED_WRITE_MAIL(mails[mail_idx:])
                 pass
             else:
                 time.sleep(0.5)
@@ -92,7 +96,10 @@ class MailHandler:
             working = False
 
         mails.append(envelope)
+        curses_cli.EXPOSED_WRITE_MAIL(mails[mail_idx:])
         return '250 Message accepted for deliver'
+
+import curses_cli
 
 def main():
     foo = Controller(MailHandler())
@@ -101,7 +108,6 @@ def main():
     mail_thread = MailThread()
     mail_thread.start()
 
-    while True:
-        pass
+    curses_cli.run()
 
 if __name__ == "__main__": main()
